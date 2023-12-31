@@ -1,0 +1,92 @@
+# SPDX-FileCopyrightText: 2023 the lagfitter authors
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: "Integration"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions: read-all
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-20.04
+    steps:
+      - run: |
+          sudo apt update -y
+          sudo apt install -y openbox xvfb
+
+      - name: Run sccache-cache
+        if: github.actor != 'nektos/act'
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Set caching env var
+        if: github.actor != 'nektos/act'
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_VERSION=1" >> $GITHUB_ENV
+
+      - name: Try to reduce disk usage
+        if: github.actor != 'nektos/act'
+        run: |
+          docker image prune -af
+          sudo rm -rf \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /usr/local/lib/android \
+            /usr/share/dotnet
+          sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell mono-devel --fix-missing
+
+      - uses: actions/checkout@v4
+        with:
+          path: src/flutter
+
+      - name: Fetch the whole tree
+        uses: ./src/flutter/.github/actions/gclient-sync
+        with:
+          config: |
+            solutions = [
+              {
+                "managed": False,
+                "name": "src/flutter",
+                "url": "https://github.com/lagfitter/engine.git@${{github.sha}}",
+                "deps_file": "DEPS",
+                "custom_deps": {
+                },
+                "custom_vars": {
+                  # this is just debian sysroots
+                  #"download_linux_deps": False,
+                  "download_android_deps": False,
+                },
+              },
+            ]
+
+      - name: Build debug
+        run: |
+          cd src
+          python3 ./flutter/tools/gn \
+            --out-dir "$PWD" \
+            --no-goma \
+            --clang \
+            --no-backtrace \
+            --no-stripped \
+            --prebuilt-dart-sdk \
+            --unoptimized \
+            --gn-args 'ccache_bin="sccache" use_ccache=${{ github.actor != 'nektos/act' }}' \
+            --runtime-mode=debug
+          ./flutter/third_party/ninja/ninja -C "$PWD/out/host_debug_unopt"
+
+      - name: Run unit tests
+        run: |
+          cd src/flutter
+          ./testing/run_tests.py --type=engine
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"

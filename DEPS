@@ -267,7 +267,7 @@ allowed_hosts = [
 ]
 
 deps = {
-  'src': 'https://github.com/lagfitter/buildroot.git' + '@' + '0141e94b34cbd3db77f28796587334857fa985da',
+  'src': 'https://github.com/lagfitter/buildroot.git' + '@' + '7c0ba5694b99d52cca84e64ba5216f96e738697d',
 
   'src/flutter/third_party/rapidjson':
    Var('flutter_git') + '/third_party/rapidjson' + '@' + 'ef3564c5c8824989393b87df25355baf35ff544b',

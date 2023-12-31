@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2023 the lagfitter authors
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: "gclient sync"
+description: "fetch all the code"
+inputs:
+  config:
+    description: "gclient config"
+    required: true
+  with-history:
+    description: "whether to clone full git history"
+    default: false
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+    - name: Setup depot_tools
+      run: |
+        depot='/tmp/depot_tools'
+        mkdir -p "$depot"
+        cd "$depot"
+        git init -q .
+        git fetch https://chromium.googlesource.com/chromium/tools/depot_tools.git 2bd782954f7cea8d1bd68554e76d8cbf539d67b6 --depth=1
+        git merge FETCH_HEAD
+        git remote add origin https://chromium.googlesource.com/chromium/tools/depot_tools.git
+        echo "PATH=${PATH}:${depot}" >> "$GITHUB_ENV"
+        # echo "VPYTHON_BYPASS=manually managed python not supported by chrome operations" >> "$GITHUB_ENV"
+        pip install httplib2
+      shell: sh
+    - name: Fetch that code
+      run: |
+        echo "${CONFIG}" > .gclient
+        gclient sync --no-history
+      shell: sh
+      env:
+        CONFIG: ${{ inputs.config }}
