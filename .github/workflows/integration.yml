@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2023 the lagfitter authors
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: "Integration"
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - ci-setup # test
+
+permissions: read-all
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src/flutter
+      - uses: ./.github/actions/gclient-sync
+        config: |
+          solutions = [
+            {
+              "managed": False,
+              "name": "src/flutter",
+              "url": "https://github.com/lagfitter/engine.git@${{github.sha}}",
+              "deps_file": "DEPS",
+              "custom_deps": {},
+              "custom_vars": {},
+            },
+          ]

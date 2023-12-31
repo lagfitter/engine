@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2023 the lagfitter authors
+# SPDX-License-Identifier: BSD-3-Clause
+
+name: "gclient sync"
+description: "fetch all the code"
+inputs:
+  config:
+    description: "gclient config"
+    required: true
+  with-history:
+    description: "whether to clone full git history"
+    default: false
+outputs: {}
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        mkdir /tmp/depot_tools
+        cd /tmp/depot_tools
+        git init -q .
+        git fetch https://chromium.googlesource.com/chromium/tools/depot_tools 8191486420f1de381c889607c6585a440d4fbcfe --depth=1
+        git merge FETCH_HEAD
+        echo "PATH=$PATH:$PWD" >> "$GITHUB_ENV"
+    - run: |
+        echo "$CONFIG" > .gclient
+        gclient sync --no-history
+      env:
+        CONFIG: ${{ inputs.config }}
